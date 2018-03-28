@@ -1,8 +1,3 @@
-/*
-    It's finally here!
-    Edit by f0x, original code from Fastled, Sebastius, Juerd
-*/
-
 #include <EEPROM.h>
 
 #include <ESP8266WiFi.h>
@@ -10,12 +5,11 @@
 #include <WiFiClient.h>
 
 #include <PubSubClient.h> //https://github.com/knolleary/pubsubclient/releases/tag/2.4
+#include "LedControl.h"
 
+LedControl lc=LedControl(D7, D6, D5, 1);
 void onMqttMessage(char* topic, byte * payload, unsigned int length);
 boolean reconnect();
-
-#define ARRAY_SIZE(A) (sizeof(A) / sizeof((A)[0]))
-#define PULSE_PIN D2
 
 // WiFi settings
 char ssid[] = "revspace-pub-2.4ghz";    //    your network SSID (name)
@@ -23,6 +17,7 @@ char pass[] = "";             // your network password
 
 // MQTT Server settings and preparations
 const char* mqtt_server = "mosquitto.space.revspace.nl";
+int counter = 0;
 WiFiClient espClient;
 
 PubSubClient client(mqtt_server, 1883, onMqttMessage, espClient);
@@ -33,11 +28,15 @@ void setup() {
     Serial.begin(115200);
     Serial.println();
     Serial.println(ESP.getChipId());
-    pinMode(PULSE_PIN, OUTPUT);
 
     Serial.print("Connecting to ");
     Serial.print(ssid);
     WiFi.begin(ssid, pass);
+
+    lc.shutdown(0, false);
+    lc.setScanLimit(0, 8);
+    lc.setIntensity(0, 8);
+    lc.clearDisplay(0);
 
     while (WiFi.status() != WL_CONNECTED) {
         delay(50);
@@ -54,21 +53,15 @@ void setup() {
 
 boolean reconnect() {
     if (client.connect("oreo-counter")) {
-        // Once connected, publish an announcement...
         client.publish("f0x/oreo-counter", "online");
-        // ... and resubscribe
-        client.subscribe("revspace/revbank/sale");
-        client.subscribe("revspace/revbank/track");
+        client.subscribe("revspace/bank/84100733");
         client.loop();
     }
     return client.connected();
 }
 
-char productToTrack[50] = "";
-
 void onMqttMessage(char* topic, byte * payload, unsigned int length) {
     char bericht[50] = "";
-
     Serial.print("received topic: ");
     Serial.println(topic);
     Serial.print("length: ");
@@ -80,26 +73,12 @@ void onMqttMessage(char* topic, byte * payload, unsigned int length) {
     Serial.println(bericht);
     Serial.println();
 
-    if (strcmp(topic, "revspace/revbank/sale") == 0) {
-        Serial.println("Checking for an Oreo sale");
-
-        if (strcmp(bericht, productToTrack) == 0) {
-            Serial.println("An Oreo was sold!");
-
-            digitalWrite(PULSE_PIN, HIGH);
-            delay(10);
-            digitalWrite(PULSE_PIN, LOW);
-        } else {
-            Serial.println("It wasn't an Oreo...");
-        }
-    } else if (strcmp(topic, "revspace/revbank/track") == 0) {
-        Serial.println("Registering a new product to track...");
-        Serial.println(bericht);
-
-        for (uint8_t pos = 0; pos < 50; pos++) {
-            productToTrack[pos] = bericht[pos];
-        }
-    }
+    if (strcmp(topic, "revspace/bank/84100733") == 0) {
+        //printNumber(atoi(bericht));
+        lc.setDigit(0,0,atoi(bericht)%10,false);
+        Serial.println("An Oreo was sold!");
+        Serial.println(atoi(bericht)%10);
+    } 
 }
 
 void loop() {
@@ -117,3 +96,30 @@ void loop() {
         client.loop();
     }
 }
+
+//void printNumber(int v) {  
+//    int ones;  
+//    int tens;  
+//    int hundreds; 
+//
+//    boolean negative=false;
+//
+//    if(v < -999 || v > 999)  
+//        return;  
+//    if(v<0) {  
+//        negative=true; 
+//        v=v*-1;  
+//    }
+//    ones=v%10;  
+//    v=v/10;  
+//    tens=v%10;  
+//    v=v/10; hundreds=v;  
+//    if(negative) {  
+//        lc.setChar(0,3,'-',false);  } 
+//    else {
+//        lc.setChar(0,3,' ',false);  
+//    }  
+//    lc.setDigit(0,2,(byte)hundreds,false);
+//    lc.setDigit(0,1,(byte)tens,false); 
+//    lc.setDigit(0,0,(byte)ones,false); 
+//} 
