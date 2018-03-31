@@ -18,6 +18,8 @@ char pass[] = "";             // your network password
 // MQTT Server settings and preparations
 const char* mqtt_server = "mosquitto.space.revspace.nl";
 int counter = 0;
+int koekjes = 0;
+int ijsjes = 0;
 WiFiClient espClient;
 
 PubSubClient client(mqtt_server, 1883, onMqttMessage, espClient);
@@ -54,7 +56,8 @@ void setup() {
 boolean reconnect() {
     if (client.connect("oreo-counter")) {
         client.publish("f0x/oreo-counter", "online");
-        client.subscribe("revspace/bank/84100733");
+        client.subscribe("revspace/bank/841007331");
+        client.subscribe("revspace/bank/40079930169221");
         client.loop();
     }
     return client.connected();
@@ -73,12 +76,22 @@ void onMqttMessage(char* topic, byte * payload, unsigned int length) {
     Serial.println(bericht);
     Serial.println();
 
-    if (strcmp(topic, "revspace/bank/84100733") == 0) {
+    if (strcmp(topic, "revspace/bank/4007993016922") == 0) {
+      ijsjes = atoi(bericht);
+    } else if (strcmp(topic, "revspace/bank/84100733") == 0) {
+      koekjes = atoi(bericht);
+    }
+
+    int totaal = ijsjes + koekjes;
+
         //printNumber(atoi(bericht));
-        lc.setDigit(0,0,atoi(bericht)%10,false);
-        Serial.println("An Oreo was sold!");
-        Serial.println(atoi(bericht)%10);
-    } 
+    lc.setDigit(0,0,totaal%10,false);
+    lc.setDigit(0,1,int(totaal/10)%10,false);
+    lc.setDigit(0,2,int(totaal/100)%10,false);
+    lc.setDigit(0,3,int(totaal/1000)%10,false);
+    Serial.println("An Oreo was sold!");
+    Serial.println(totaal);
+     
 }
 
 void loop() {
